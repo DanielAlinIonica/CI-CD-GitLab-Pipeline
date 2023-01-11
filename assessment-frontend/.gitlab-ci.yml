@@ -1,0 +1,61 @@
+stages:
+- build
+- package
+- deploy
+
+variables:
+  DOCKER_TLS_CERTDIR: ""
+  CLOUD: AWS
+
+default:
+  retry:
+    max: 1
+    when:
+    - runner_system_failure
+    - stuck_or_timeout_failure
+
+########## BUILD ##########
+
+build-test:
+  stage: build
+  
+  image: public.ecr.aws/f3z9g7k3/node:16-buster
+
+  script:
+  - npm install
+
+  except:
+  - tags
+
+########## PACKAGE ##########
+
+docker-build-push:
+  stage: package
+
+  image: public.ecr.aws/f3z9g7k3/base-docker-docker:1.43
+
+  services:
+  - name: public.ecr.aws/f3z9g7k3/base-docker-dind:20.10
+    alias: docker
+
+  script:
+  - chmod +x ./script/docker-build-push.sh
+  - ./script/docker-build-push.sh
+
+  except:
+  - tags
+
+########## DEPLOY ##########
+
+deploy-dev:
+  stage: deploy
+  
+  image: public.ecr.aws/f3z9g7k3/node:16-buster
+
+  script:
+  - source ./script/config.conf
+  - chmod +x ./script/deploy.sh
+  - ./script/deploy.sh
+
+  except:
+  - tags
